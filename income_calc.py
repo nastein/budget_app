@@ -2,34 +2,34 @@ def calculate_tax(taxable_income, brackets):
 	"""
 	taxable_income : float
 	brackets : list of tuples (upper_limit, rate)
-	           upper_limit is the top of the bracket
-	           rate is decimal (e.g. 0.22 for 22%)
-	           Use None for final unlimited bracket.
-	           
+		upper_limit is the top of the bracket (taxable income)
+		rate is decimal (e.g. 0.22 for 22%)
+		Use None for final unlimited bracket.
+
 	Returns total tax owed.
 	"""
-	tax_owed = 0
-	previous_limit = 0
+	taxable_income = float(taxable_income)
+	tax_owed = 0.0
+	previous_limit = 0.0
 
 	for upper_limit, rate in brackets:
-	    
-	    if upper_limit is None:
-	        # Last bracket
-	        taxable_amount = taxable_income - previous_limit
-	    else:
-	        taxable_amount = min(taxable_income, upper_limit) - previous_limit
-	    
-	    if taxable_amount <= 0:
-	        break
-	    
-	    tax_owed += taxable_amount * rate
-	    
-	    if upper_limit is None or taxable_income <= upper_limit:
-	        break
-	    
-	    previous_limit = upper_limit
+		if upper_limit is None:
+			taxable_amount = taxable_income - previous_limit
+		else:
+			taxable_amount = min(taxable_income, upper_limit) - previous_limit
+
+		if taxable_amount <= 0:
+			break
+
+		tax_owed += taxable_amount * rate
+
+		if upper_limit is None or taxable_income <= upper_limit:
+			break
+
+		previous_limit = float(upper_limit)
 
 	return tax_owed
+
 
 def income_c(gross_income, cont401k_personal=0, match401k_rate=0, 
            HSA_cont_monthly=0, healthcare_cost_permonth=0, debug=False):
@@ -51,7 +51,20 @@ def income_c(gross_income, cont401k_personal=0, match401k_rate=0,
 	    - healthcare_cost
 	)
 
-	tax_brackets = [(.1,12400), (.12,50400), (.22,105700)]
+	# -----------------------
+	# 2026 FEDERAL BRACKETS (Taxable income)
+	# -----------------------
+
+	tax_brackets = [
+		(12400, 0.10),
+		(50400, 0.12),
+		(105700, 0.22),
+		(201775, 0.24),
+		(256225, 0.32),
+		(640600, 0.35),
+		(None,   0.37),
+	]
+
 	income_tax = calculate_tax(taxable_income, tax_brackets)
 	FICA_tax = gross_income * FICA_rate
 
