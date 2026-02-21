@@ -279,8 +279,8 @@ with st.sidebar:
 
 	st.divider()
 	st.header("Net Worth")
-	current_cash = st.number_input("Current cash", min_value=0.0, value=float(21000 + 16000 + 20000), step=1000.0)
-	current_investments = st.number_input("Current investments", min_value=0.0, value=420000.0, step=5000.0)
+	current_cash = st.number_input("Current cash", min_value=0.0, value=0., step=1000.0)
+	current_investments = st.number_input("Current investments", min_value=0.0, value=0., step=5000.0)
 
 	st.divider()
 	st.header("Projection")
