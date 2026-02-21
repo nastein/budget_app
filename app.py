@@ -255,12 +255,12 @@ with st.sidebar:
 
 	st.divider()
 	st.header("Fixed Costs (monthly)")
-	rent_in = st.number_input("Rent", min_value=0.0, value=0., step=50.0)
-	utilities_in = st.number_input("Utilities", min_value=0.0, value=0.0, step=25.0)
+	rent_in = st.number_input("Rent", min_value=0.0, value=1000., step=50.0)
+	utilities_in = st.number_input("Utilities", min_value=0.0, value=100.0, step=25.0)
 	insurance_in = st.number_input("Insurance", min_value=0.0, value=0.0, step=25.0)
-	trans_travel_in = st.number_input("Transportation/Travel", min_value=0.0, value=0., step=25.0)
+	trans_travel_in = st.number_input("Transportation/Travel", min_value=0.0, value=100., step=25.0)
 	debt_in = st.number_input("Debt", min_value=0.0, value=0., step=10.0)
-	clothes_in = st.number_input("Clothes", min_value=0.0, value=0., step=25.0)
+	clothes_in = st.number_input("Clothes", min_value=0.0, value=100., step=25.0)
 	phone_in = st.number_input("Phone", min_value=0.0, value=0.0, step=10.0)
 	subs_in = st.number_input("Subscriptions", min_value=0.0, value=0., step=25.0)
 
