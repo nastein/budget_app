@@ -409,7 +409,7 @@ with tab3:
 	restore_session(supabase)
 	expenses = (
 	    supabase.table("expense_profile")
-	    .select("id, expense_date, category, amount, created_at, Notes")
+	    .select("id, expense_id, expense_date, category, amount, created_at, Notes")
 	    .gte("expense_date", start_date.isoformat())
 	    .lte("expense_date", end_date.isoformat())
 	    .order("expense_date", desc=True)
@@ -430,10 +430,34 @@ with tab3:
 
 		df = pd.DataFrame(rows)
 		df["expense_date"] = pd.to_datetime(df["expense_date"]).dt.date
-		df.drop(columns=['id','created_at'],inplace=True)
+		df.drop(columns=['id','created_at', 'expense_id'],inplace=True)
 		df.columns = ['Expense Date', 'Category', 'Amount', 'Note']
 		pd.to_numeric(df["Amount"], errors="coerce").fillna(0.0)
 		st.dataframe(df, width='stretch')
+
+		st.subheader("Delete an expense")
+
+		def label(r):
+			note = (r.get("Notes") or "").strip()
+			note_part = f" - {note}" if note else ""
+			return f'{r["expense_date"]} • {r["category"]} • ${float(r["amount"]):,.2f}{note_part}'
+
+		options = [r["expense_id"] for r in rows]
+		labels = {r["expense_id"]: label(r) for r in rows}
+
+		delete_expense_id = st.selectbox(
+			"Choose expense",
+			options=options,
+			format_func=lambda eid: labels[eid],
+		)
+
+		confirm = st.checkbox("I understand this will permanently delete the expense.")
+
+		if st.button("Delete selected expense", disabled = not confirm):
+			restore_session(supabase)
+			supabase.table("expense_profile").delete().eq("expense_id", delete_expense_id).execute()
+			st.success("Deleted.")
+			st.rerun()
 
 		total_spent = float(df['Amount'].sum())
 
