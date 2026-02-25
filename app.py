@@ -105,8 +105,48 @@ with tab1:
 		    st.success("New display name saved.")
 		    st.rerun()
 
+		res_data = (
+		    supabase.table("budget_profile")
+		    .select("data")
+		    .eq("id", user_id)
+		    .single()
+		    .execute()
+		)
+
+		saved_data = res_data.data.get("data") if res_data.data else None
+
 with tab2:
 	st.title("Monthly Budget Dashboard")
+
+	DEFAULTS = {
+	    "annual_salary": 50000.0,
+	    "pretax_401k_annual": 10.0,
+	    "match_rate": 0.0,
+	    "hsa_monthly_in": 0.0,
+	    "healthcare_monthly_premium": 0.0,
+	    "other_income": 0.0,
+	    "rent_in": 1000.0,
+	    "utilities_in": 100.0,
+	    "insurance_in": 0.0,
+	    "trans_travel_in": 100.0,
+	    "food_in": 100.0,
+	    "debt_in": 0.0,
+	    "clothes_in": 100.0,
+	    "phone_in": 0.0,
+	    "subs_in": 0.0,
+	    "roth_in": 0.0,
+	    "stocks_in": 0.0,
+	    "post_other_in": 0.0,
+	    "emergency_in": 0.0,
+	    "vacations_in": 0.0,
+	    "gifts_in": 0.0,
+	    "save_other_in": 0.0,
+	    "current_cash": 0.0,
+	    "current_investments": 0.0,
+	}
+
+	for k, v in DEFAULTS.items():
+	    st.session_state.setdefault(k, v)
 
 	if not user_id:
 		st.info("Log in to load saved settings")
@@ -153,35 +193,6 @@ with tab2:
 				out = save_profile_data(supabase, user_id, profile_payload)
 				st.sidebar.success("Saved your profile!")
 			    # optional: st.write(out.data)
-	DEFAULTS = {
-	    "annual_salary": 50000.0,
-	    "pretax_401k_annual": 10.0,
-	    "match_rate": 0.0,
-	    "hsa_monthly_in": 0.0,
-	    "healthcare_monthly_premium": 0.0,
-	    "other_income": 0.0,
-	    "rent_in": 1000.0,
-	    "utilities_in": 100.0,
-	    "insurance_in": 0.0,
-	    "trans_travel_in": 100.0,
-	    "food_in": 100.0,
-	    "debt_in": 0.0,
-	    "clothes_in": 100.0,
-	    "phone_in": 0.0,
-	    "subs_in": 0.0,
-	    "roth_in": 0.0,
-	    "stocks_in": 0.0,
-	    "post_other_in": 0.0,
-	    "emergency_in": 0.0,
-	    "vacations_in": 0.0,
-	    "gifts_in": 0.0,
-	    "save_other_in": 0.0,
-	    "current_cash": 0.0,
-	    "current_investments": 0.0,
-	}
-
-	for k, v in DEFAULTS.items():
-	    st.session_state.setdefault(k, v)
 
 	with st.sidebar:
 		st.header("Income")
