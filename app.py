@@ -61,8 +61,7 @@ with tab1:
 		    
 			email_norm = email.strip().lower()
 
-			#res = supabase.auth.sign_in_with_password({"email": email_norm,"password": password})
-			res = supabase.auth.sign_in_with_password({"email": "testemail@gmail.com","password": "password"})
+			res = supabase.auth.sign_in_with_password({"email": email_norm,"password": password})
 			if 'user' in res:
 				set_session(res.session)
 				st.success("Sucess!")
