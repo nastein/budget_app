@@ -9,6 +9,13 @@ import io
 # -----------------------
 # Helpers (same as your script)
 # -----------------------
+def autopct_dollars(values):
+    total = sum(values)
+    def inner(pct):
+        val = pct * total / 100.0
+        return f"${val:,.2f}"
+    return inner
+
 def autopct_format(values):
 	def inner(pct):
 		total = sum(values)

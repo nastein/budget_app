@@ -1,9 +1,11 @@
-from datetime import datetime
+from datetime import datetime,date
+import matplotlib.dates as mdates
 
 import streamlit as st
 from supabase import create_client, Client
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mtick
+import pandas as pd
 
 # If you still want to use your existing function:
 from income_calc import income_c
@@ -45,7 +47,7 @@ with tab1:
 	password = st.text_input("Password", type="password")
 
 	if mode == "Register":
-		if st.button("Create account", use_container_width=True):
+		if st.button("Create account", width='stretch'):
 			#try:
 			res = supabase.auth.sign_up({"email": email, "password": password})
 			st.success("Account created.")# Check your email if confirmations are enabled.")
@@ -55,11 +57,12 @@ with tab1:
 				st.rerun()
 
 	if mode == "Login":
-		if st.button("Login", use_container_width=True):
+		if st.button("Login", width='stretch'):
 		    
 			email_norm = email.strip().lower()
 
-			res = supabase.auth.sign_in_with_password({"email": email_norm,"password": password})
+			#res = supabase.auth.sign_in_with_password({"email": email_norm,"password": password})
+			res = supabase.auth.sign_in_with_password({"email": "testemail@gmail.com","password": "password"})
 			if 'user' in res:
 				set_session(res.session)
 				st.success("Sucess!")
@@ -85,7 +88,7 @@ with tab1:
 		st.write(f"Signed in as: **{u.user.email}**")
 		st.write("Current display name:", display_name)
 
-		if st.button("Logout", use_container_width=True):
+		if st.button("Logout", width='stretch'):
 		    clear_session()
 		    st.rerun()
 
@@ -153,13 +156,13 @@ with tab2:
 	else:
 		with st.sidebar:
 			if saved_data is not None:
-			    if st.button("Load Saved Profile Settings",use_container_width=True):
+			    if st.button("Load Saved Profile Settings",width='stretch'):
 			        for key, value in saved_data.items():
 			            st.session_state[key] = value
 			        st.sidebar.success("Saved settings loaded.")
 			        st.rerun()
 
-			if st.button("Save profile settings", use_container_width=True):
+			if st.button("Save profile settings", width='stretch'):
 				profile_payload = {
 				"annual_salary": st.session_state["annual_salary"],
 				"pretax_401k_annual": st.session_state["pretax_401k_annual"],
@@ -359,8 +362,115 @@ with tab2:
 
 with tab3:
 	st.title("Expenses")
-	st.write("put expenses here")
+
+	CATEGORIES = [
+	    "Rent", "Utilities", "Groceries", "Dining", "Transportation", "Insurance",
+	    "Debt", "Subscriptions", "Health", "Clothes", "Entertainment", "Travel", "Gifts", "Other"
+	]
+
+	if not user_id:
+		st.info("Log in to track expenses.")
+		st.stop()
+
+    # Always ensure auth session before DB calls
+	restore_session(supabase)
+
+	st.subheader("Add an expense")
+
+	with st.form("add_expense_form", clear_on_submit=True):
+	    amount = st.number_input("Amount", min_value=0.0, step=1.0, format="%.2f", key="exp_amount")
+	    category = st.selectbox("Category", CATEGORIES, key="exp_category")
+	    expense_date = st.date_input("Date", value=date.today(), key="exp_date")
+	    note = st.text_input("Note (optional, max 100 characters)", max_chars=100, key="exp_note")
+	    submitted = st.form_submit_button("Add expense")
+
+	if submitted:
+	    expense_payload = {
+	        "id": user_id,
+	        "amount": float(amount),
+	        "category": category,
+	        "expense_date": expense_date.isoformat(),  # date -> 'YYYY-MM-DD',
+	        "Notes": note
+	        #"note": note.strip() if note else None,
+	    }
+
+	    supabase.table("expense_profile").insert(expense_payload).execute()
+	    st.success("Expense added.")
+	    st.rerun()
+
+	st.subheader("Your expenses")
+
+	colA, colB = st.columns(2)
+	with colA:
+	    start_date = st.date_input("From", value=date.today().replace(day=1), key="exp_from")
+	with colB:
+	    end_date = st.date_input("To", value=date.today(), key="exp_to")
+
+	# Fetch
+	restore_session(supabase)
+	expenses = (
+	    supabase.table("expense_profile")
+	    .select("id, expense_date, category, amount, created_at, Notes")
+	    .gte("expense_date", start_date.isoformat())
+	    .lte("expense_date", end_date.isoformat())
+	    .order("expense_date", desc=True)
+	    .execute()
+	)
+
+	#Get total spending on per month basis
+	monthly = supabase.rpc("monthly_expense_totals", {"start_date": None, "end_date": None}).execute()
+	dfm = pd.DataFrame(monthly.data)
+	if not dfm.empty:
+		dfm["month"] = pd.to_datetime(dfm["month"])
+		dfm["total"] = dfm["total"].astype(float)
+
+	rows = expenses.data or []
+	if not rows:
+	    st.write("No expenses in this range.")
+	else:
+
+		df = pd.DataFrame(rows)
+		df["expense_date"] = pd.to_datetime(df["expense_date"]).dt.date
+		df.drop(columns=['id','created_at'],inplace=True)
+		df.columns = ['Expense Date', 'Category', 'Amount', 'Note']
+		pd.to_numeric(df["Amount"], errors="coerce").fillna(0.0)
+		st.dataframe(df, width='stretch')
+
+		total_spent = float(df['Amount'].sum())
+
+		amount_by_cat = df.groupby('Category')['Amount'].sum().reset_index()
+		cats = amount_by_cat['Category'].values 
+		amounts = amount_by_cat['Amount'].values
+
+		fig_s, ax_s = plt.subplots(1, 2, figsize=(14, 7))
+
+		ax_s[0].pie(
+			amounts,
+			labels=cats,
+			autopct=autopct_dollars(amounts),
+			startangle=90,
+			wedgeprops={"edgecolor": "black"},
+		)
+		ax_s[0].set_title(f"Total Spent in {start_date} - {end_date}: {total_spent}$", fontsize=12, pad=20)
+		ax_s[0].axis("equal")
+
+		ax_s[1].bar(dfm["month"], dfm["total"])
+		ax_s[1].set_title(f"Total Spending per month")
+		ax_s[1].set_xlabel('Month')
+		ax_s[1].set_ylabel('Spending ($)')
+		#ax_s[1].set_xticklabels(dfm["month"],rotation=45, ha='right')
+		ax_s[1].xaxis.set_major_locator(mdates.MonthLocator())
+		ax_s[1].xaxis.set_major_formatter(mdates.DateFormatter("%m/%y"))
+
+		plt.setp(ax_s[1].get_xticklabels(), rotation=45, ha="right")
+
+
+		st.pyplot(fig_s, clear_figure=True)
+
+
+		#st.metric("Total in range", f"${df['Amount'].sum():,.2f}")
 
 # Cleanup matplotlib objects
 plt.close(pie_fig)
 plt.close(proj_fig)
+plt.close(fig_s)
