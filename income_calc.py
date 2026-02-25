@@ -43,6 +43,16 @@ def income_c(gross_income, cont401k_personal=0, match401k_rate=0,
 	FICA_rate = 7.65 / 100
 	standard_deduction = 16100
 
+	michigan_tax_rate = 4.25 / 100
+	michigan_tax_exemption = 5800
+
+	state_taxable_income = (
+		gross_income 
+		- cont401k_rate * gross_income
+		- HSA_cont
+		- healthcare_cost
+		- michigan_tax_exemption)
+
 	taxable_income = (
 	    gross_income 
 	    - cont401k_rate * gross_income 
@@ -67,6 +77,7 @@ def income_c(gross_income, cont401k_personal=0, match401k_rate=0,
 
 	income_tax = calculate_tax(taxable_income, tax_brackets)
 	FICA_tax = gross_income * FICA_rate
+	state_tax = state_taxable_income*michigan_tax_rate
 
 	net_income = (
 	    gross_income 
@@ -75,6 +86,7 @@ def income_c(gross_income, cont401k_personal=0, match401k_rate=0,
 	    - gross_income * cont401k_rate 
 	    - HSA_cont 
 	    - healthcare_cost
+	    - state_tax
 	)
 
 	monthly_income = net_income / 12
