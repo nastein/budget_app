@@ -253,8 +253,8 @@ def init_connection():
 
 
 def set_session(session):
-    st.session_state["access_token"] = session.access_token
-    st.session_state["refresh_token"] = session.refresh_token
+    st.session_state["sb_access_token"] = session.access_token
+    st.session_state["sb_refresh_token"] = session.refresh_token
 
 def clear_session():
     st.session_state.clear()
