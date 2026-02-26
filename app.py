@@ -6,6 +6,7 @@ from supabase import create_client, Client
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mtick
 import pandas as pd
+import numpy as np
 
 # If you still want to use your existing function:
 from income_calc import income_c
@@ -468,19 +469,15 @@ with tab3:
 
 		amount_by_cat = df.groupby('Category')['Amount'].sum().reset_index()
 		cats = amount_by_cat['Category'].values 
-		amounts = amount_by_cat['Amount'].values
+		amounts = amount_by_cat['Amount'].values.astype(float)
 
 		fig_s, ax_s = plt.subplots(1, 2, figsize=(14, 7))
 
-		ax_s[0].pie(
-			amounts,
-			labels=cats,
-			autopct=autopct_dollars(amounts),
-			startangle=90,
-			wedgeprops={"edgecolor": "black"},
-		)
+		ax_s[0].barh(cats,amounts)
 		ax_s[0].set_title(f"Total Spent in {start_date} - {end_date}: {total_spent}$", fontsize=12, pad=20)
-		ax_s[0].axis("equal")
+		ax_s[0].set_xlabel('Amount spent ($)')
+		for i, v in enumerate(amounts):
+			ax_s[0].text(v, i, f" ${v:,.0f}", va="center")
 
 		ax_s[1].bar(dfm["month"], dfm["total"])
 		ax_s[1].set_title(f"Total Spending per month")
@@ -491,7 +488,7 @@ with tab3:
 		ax_s[1].xaxis.set_major_formatter(mdates.DateFormatter("%m/%y"))
 
 		plt.setp(ax_s[1].get_xticklabels(), rotation=45, ha="right")
-
+		plt.setp(ax_s[0].get_xticklabels(), rotation=45, ha="right")
 
 		st.pyplot(fig_s, clear_figure=True)
 
