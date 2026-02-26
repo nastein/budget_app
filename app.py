@@ -121,12 +121,19 @@ with tab2:
 	st.title("Monthly Budget Dashboard")
 
 	DEFAULTS = {
+		"use_second_income": False,
 	    "annual_salary": 50000.0,
 	    "pretax_401k_annual": 10.0,
 	    "match_rate": 0.0,
 	    "hsa_monthly_in": 0.0,
 	    "healthcare_monthly_premium": 0.0,
 	    "other_income": 0.0,
+	    "annual_salary_2": 50000.0,
+	    "pretax_401k_annual_2": 10.0,
+	    "match_rate_2": 0.0,
+	    "hsa_monthly_in_2": 0.0,
+	    "healthcare_monthly_premium_2": 0.0,
+	    "other_income_2": 0.0,
 	    "rent_in": 1000.0,
 	    "utilities_in": 100.0,
 	    "insurance_in": 0.0,
@@ -162,39 +169,9 @@ with tab2:
 			        st.rerun()
 
 			if st.button("Save profile settings", width='stretch'):
-				profile_payload = {
-				"annual_salary": st.session_state["annual_salary"],
-				"pretax_401k_annual": st.session_state["pretax_401k_annual"],
-				"match_rate": st.session_state["match_rate"],
-				"hsa_monthly_in": st.session_state["hsa_monthly_in"],
-				"healthcare_monthly_premium": st.session_state["healthcare_monthly_premium"],
-				"other_income": st.session_state["other_income"],
-
-				"rent_in": st.session_state["rent_in"],
-				"utilities_in": st.session_state["utilities_in"],
-				"insurance_in": st.session_state["insurance_in"],
-				"trans_travel_in": st.session_state["trans_travel_in"],
-				"food_in": st.session_state["food_in"],
-				"debt_in": st.session_state["debt_in"],
-				"clothes_in": st.session_state["clothes_in"],
-				"phone_in": st.session_state["phone_in"],
-				"subs_in": st.session_state["subs_in"],
-
-				"roth_in": st.session_state["roth_in"],
-				"stocks_in": st.session_state["stocks_in"],
-				"post_other_in": st.session_state["post_other_in"],
-
-				"emergency_in": st.session_state["emergency_in"],
-				"vacations_in": st.session_state["vacations_in"],
-				"gifts_in": st.session_state["gifts_in"],
-				"save_other_in": st.session_state["save_other_in"],
-
-				"current_cash": st.session_state["current_cash"],
-				"current_investments": st.session_state["current_investments"],
-				}
+				profile_payload = {k: st.session_state.get(k) for k in DEFAULTS.keys()}
 				out = save_profile_data(supabase, user_id, profile_payload)
 				st.sidebar.success("Saved your profile!")
-			    # optional: st.write(out.data)
 
 	with st.sidebar:
 		st.header("Income")
@@ -203,7 +180,19 @@ with tab2:
 		match_rate = st.number_input("Employer match rate (decimal)", min_value=0.0, max_value=1.0, step=0.01,key="match_rate")
 		hsa_monthly_in = st.number_input("HSA monthly contribution", min_value=0.0,key="hsa_monthly_in")
 		healthcare_monthly_premium = st.number_input("Healthcare monthly premium", min_value=0.0, step=50.0,key="healthcare_monthly_premium")
-		other_income = st.number_input("Other monthly income (Spouse aftertax)",min_value=0.0,step=100.0,key="other_income")
+		other_income = st.number_input("Other monthly income",min_value=0.0,step=100.0,key="other_income")
+
+		st.divider()
+		st.checkbox("Include 2nd income", key="use_second_income")
+
+		if st.session_state["use_second_income"]:
+			st.subheader("Income (Person 2)")
+			annual_salary_2 = st.number_input("Pretax Annual salary (2)", min_value=0.0, step=1000.0, key="annual_salary_2")
+			pretax_401k_annual_2 = st.number_input("401k annual contribution (2)", min_value=0.0, step=500.0,key="pretax_401k_annual_2")
+			match_rate_2 = st.number_input("Employer match rate (2) (decimal)", min_value=0.0, max_value=1.0, step=0.01,key="match_rate_2")
+			hsa_monthly_in_2 = st.number_input("HSA monthly contribution (2)", min_value=0.0,key="hsa_monthly_in_2")
+			healthcare_monthly_premium_2 = st.number_input("Healthcare monthly (2) premium", min_value=0.0, step=50.0,key="healthcare_monthly_premium_2")
+			other_income = st.number_input("Other monthly income (2)",min_value=0.0,step=100.0,key="other_income_2")
 
 		st.divider()
 		st.header("Fixed Costs (monthly)")
@@ -248,7 +237,23 @@ with tab2:
 		healthcare_monthly_premium
 	)
 
-	income = float(other_income + noahs_income)
+	monthly_income = float(other_income + noahs_income)
+	monthly_401k = pretax_401k_monthly
+	monthly_hsa = hsa_monthly
+
+	if st.session_state["use_second_income"]:
+		income2, pretax_401K_monthly2, hsa_monthly2 = income_c(
+			st.session_state["annual_salary_2"],
+			st.session_state["pretax_401k_annual_2"],
+			st.session_state["match_rate_2"],
+			st.session_state["hsa_monthly_in_2"],
+			st.session_state["healthcare_monthly_premium_2"]
+		)
+
+		monthly_income += float(income2 + st.session_state["other_income_2"])
+		monthly_401k += float(pretax_401K_monthly2)
+		monthly_hsa += float(hsa_monthly2)
+
 
 	# Budget pieces
 	fixed, fixed_block = fixed_costs(
@@ -266,13 +271,13 @@ with tab2:
 	post_tax, post_block = post_tax_investments(roth=roth_in, stocks=stocks_in, other=post_other_in)
 	save, savings_block = savings(emergency=emergency_in, vacations=vacations_in, gifts=gifts_in, other=save_other_in)
 
-	guilt_free = income - fixed - post_tax - save
+	guilt_free = monthly_income - fixed - post_tax - save
 
 	# Net worth
 	current_net_worth = float(current_cash + current_investments)
 
 	# Projection (invest earns return, savings earns 0%)
-	monthly_invest = float(pretax_401k_monthly + hsa_monthly + post_tax)
+	monthly_invest = float(monthly_401k + monthly_hsa + post_tax)
 	monthly_savings = float(save)
 	annual_contrib_total = (monthly_invest + monthly_savings) * 12
 
@@ -286,12 +291,12 @@ with tab2:
 	)
 
 	# Charts
-	pie_fig = make_pie_fig(income, fixed, post_tax, save, guilt_free, pretax_401k_monthly, hsa_monthly)
+	pie_fig = make_pie_fig(monthly_income, fixed, post_tax, save, guilt_free, monthly_401k, monthly_hsa)
 	proj_fig = make_projection_fig(t_years, contrib_invest, savings_series, fv_map)
 
 	# Text report
 	budget_text = make_budget_text(
-		income=income,
+		income=monthly_income,
 		fixed_block=fixed_block,
 		post_block=post_block,
 		savings_block=savings_block,
@@ -299,8 +304,8 @@ with tab2:
 		post_tax=post_tax,
 		save=save,
 		guilt_free=guilt_free,
-		pretax_401k=pretax_401k_monthly,
-		pretax_hsa=hsa_monthly
+		pretax_401k=monthly_401k,
+		pretax_hsa=monthly_hsa
 	)
 
 	timestamp = datetime.now().strftime("%B %d, %Y at %I:%M %p")
