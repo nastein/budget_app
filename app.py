@@ -34,12 +34,6 @@ if user_id:
 
 st.set_page_config(page_title="Budget Dashboard", layout="wide")
 
-#left, right = st.columns([3, 1], vertical_alignment="top")
-
-#with left:
-#	st.title("Budget Dashboard")
-
-#with right:
 if not user_id:
 	mode = st.radio("Mode", ["Login", "Register"], horizontal=True)
 
@@ -120,10 +114,11 @@ else:
 
 		saved_data = res_data.data.get("data") if res_data.data else None
 
-		if saved_data is not None:
-			st.success("Saved Profile Data Loaded")  
+		if saved_data is not None and st.session_state.get("profile_not_loaded") is None:
+			st.session_state["profile_not_loaded"] = False	
 			for key, value in saved_data.items():
 				st.session_state[key] = value
+			st.success("Saved Profile Data Loaded")  
 
 st.divider()
 # -----------------------
@@ -180,11 +175,12 @@ with tab2:
 	else:
 		with st.sidebar:
 			if saved_data is not None:
-			    if st.button("Load Saved Profile Settings",width='stretch'):
-			        for key, value in saved_data.items():
-			            st.session_state[key] = value
-			        st.sidebar.success("Saved settings loaded.")
-			        st.rerun()
+				if st.button("Load Saved Profile Settings",width='stretch'):
+					for key, value in saved_data.items():
+						st.session_state[key] = value
+					st.session_state["profile_not_loaded"] = False
+					st.sidebar.success("Saved settings loaded.")
+					st.rerun()
 
 			if st.button("Save profile settings", width='stretch'):
 				profile_payload = {k: st.session_state.get(k) for k in DEFAULTS.keys()}
