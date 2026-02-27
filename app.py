@@ -33,15 +33,14 @@ if user_id:
 
 
 st.set_page_config(page_title="Budget Dashboard", layout="wide")
-# -----------------------
-# Streamlit UI
-# -----------------------
-tab1,tab2,tab3 = st.tabs(["Login/Register", "Dashboard", "Expense Tracker"])
 
-with tab1:
-	#with st.sidebar:
-	st.header("Account")
+#left, right = st.columns([3, 1], vertical_alignment="top")
 
+#with left:
+#	st.title("Budget Dashboard")
+
+#with right:
+if not user_id:
 	mode = st.radio("Mode", ["Login", "Register"], horizontal=True)
 
 	email = st.text_input("Email")
@@ -63,12 +62,15 @@ with tab1:
 			email_norm = email.strip().lower()
 
 			res = supabase.auth.sign_in_with_password({"email": email_norm,"password": password})
-			if 'user' in res:
-				set_session(res.session)
+
+			session = getattr(res, "session", None)
+			user = getattr(res, "user", None)
+			if session and user:
+				set_session(session)
+				restore_session(supabase)
 				st.success("Sucess!")
 				st.rerun()
-
-
+else:
 	# Show current user + logout
 	restore_session(supabase)
 	u = supabase.auth.get_user()
@@ -122,6 +124,16 @@ with tab1:
 			st.success("Saved Profile Data Loaded")  
 			for key, value in saved_data.items():
 				st.session_state[key] = value
+
+st.divider()
+# -----------------------
+# Streamlit UI
+# -----------------------
+tab2,tab3 = st.tabs(["Dashboard", "Expense Tracker"])
+
+#with tab1:
+	#with st.sidebar:
+#	st.title("About page")
 
 with tab2:
 	st.title("Monthly Budget Dashboard")
