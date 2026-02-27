@@ -118,6 +118,11 @@ with tab1:
 
 		saved_data = res_data.data.get("data") if res_data.data else None
 
+		if saved_data is not None:
+			st.success("Saved Profile Data Loaded")  
+			for key, value in saved_data.items():
+				st.session_state[key] = value
+
 with tab2:
 	st.title("Monthly Budget Dashboard")
 
