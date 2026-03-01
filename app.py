@@ -511,4 +511,4 @@ with tab3:
 # Cleanup matplotlib objects
 plt.close(pie_fig)
 plt.close(proj_fig)
-plt.close(fig_s)
+#plt.close(fig_s)
