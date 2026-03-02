@@ -7,11 +7,15 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as mtick
 import pandas as pd
 import numpy as np
+import html
 
 # If you still want to use your existing function:
 from income_calc import income_c
 from helpers import *
 
+pie_fig = None
+proj_fig = None
+fig_s = None
 
 # Connect to supabase
 supabase = init_connection()
@@ -20,115 +24,198 @@ restore_session(supabase)
 u = supabase.auth.get_user()
 user_id = u.user.id if (u and u.user) else None
 
+display_name = None
 saved_data = None
+
 if user_id:
     res_data = (
         supabase.table("budget_profile")
-        .select("data")
+        .select("data, display_name")   # <-- IMPORTANT
         .eq("id", user_id)
         .single()
         .execute()
     )
-    saved_data = res_data.data.get("data") if res_data.data else None
 
+    if res_data.data:
+        saved_data = res_data.data.get("data")
+        display_name = res_data.data.get("display_name")
 
-st.set_page_config(page_title="Budget Dashboard", layout="wide")
-
-if not user_id:
-	mode = st.radio("Mode", ["Login", "Register"], horizontal=True)
-
-	email = st.text_input("Email")
-	password = st.text_input("Password", type="password")
-
-	if mode == "Register":
-		if st.button("Create account", width='stretch'):
-			#try:
-			res = supabase.auth.sign_up({"email": email, "password": password})
-			st.success("Account created.")# Check your email if confirmations are enabled.")
-			# If email confirmation is OFF, Supabase may return a session immediately:
-			if res.session:
-				set_session(res.session)
-				st.rerun()
-
-	if mode == "Login":
-		if st.button("Login", width='stretch'):
-		    
-			email_norm = email.strip().lower()
-
-			res = supabase.auth.sign_in_with_password({"email": email_norm,"password": password})
-
-			session = getattr(res, "session", None)
-			user = getattr(res, "user", None)
-			if session and user:
-				set_session(session)
-				restore_session(supabase)
-				st.success("Sucess!")
-				st.rerun()
+    # Sync session_state WITHOUT rerun
+    st.session_state["Display name"] = display_name
 else:
-	# Show current user + logout
-	restore_session(supabase)
-	u = supabase.auth.get_user()
-	if u and u.user:
+    st.session_state.pop("Display name", None)
 
-		user_id = u.user.id
-		res = (
-		    supabase.table("budget_profile")
-		    .select("display_name")
-		    .eq("id", user_id)
-		    .single()
-		    .execute()
-		)
-		display_name = res.data.get("display_name") if res.data else None
 
-		st.divider()
-		st.write(f"Signed in as: **{u.user.email}**")
-		st.write("Current display name:", display_name)
+header_slot = st.empty()
 
-		if st.button("Logout", width='stretch'):
-		    clear_session()
-		    st.rerun()
+def render_header():
+    name = st.session_state.get("Display name")
+    title = "Budget Dashboard" if not name else f"{name}'s Budget Dashboard"
+    header_slot.markdown(
+        f'<div class="fade-in"><h1>{html.escape(title)}</h1></div>',
+        unsafe_allow_html=True
+    )
+st.set_page_config(page_title="Budget Dashboard", layout="wide")
+st.markdown("""
+<style>
+.fade-in {
+    animation: fadeIn 1.2s ease-in-out;
+}
 
-		with st.form("display_name_form"):
-		    new_name = st.text_input("New Display Name", value=display_name or "")
-		    submitted = st.form_submit_button("Change display name")
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+</style>
+""", unsafe_allow_html=True)
 
-		if submitted:
-		    restore_session(supabase)  # safe to call again
-		    out = (
-		        supabase.table("budget_profile")
-		        .update({"display_name": new_name})
-		        .eq("id", user_id)
-		        .execute()
-		    )
+render_header()
 
-		    st.success("New display name saved.")
-		    st.rerun()
+with st.sidebar:
+	if not user_id:
+		mode = st.radio("Mode", ["Login", "Register"], horizontal=True)
 
-		res_data = (
-		    supabase.table("budget_profile")
-		    .select("data")
-		    .eq("id", user_id)
-		    .single()
-		    .execute()
-		)
+		email = st.text_input("Email")
+		password = st.text_input("Password", type="password")
 
-		saved_data = res_data.data.get("data") if res_data.data else None
+		if mode == "Register":
+			if st.button("Create account", width='stretch'):
+				#try:
+				res = supabase.auth.sign_up({"email": email, "password": password})
+				st.success("Account created.")# Check your email if confirmations are enabled.")
+				# If email confirmation is OFF, Supabase may return a session immediately:
+				if res.session:
+					set_session(res.session)
+					st.rerun()
 
-		if saved_data is not None and st.session_state.get("profile_not_loaded") is None:
-			st.session_state["profile_not_loaded"] = False	
-			for key, value in saved_data.items():
-				st.session_state[key] = value
-			st.success("Saved Profile Data Loaded")  
+		if mode == "Login":
+			if st.button("Login", width='stretch'):
+			    
+				email_norm = email.strip().lower()
 
-st.divider()
+				res = supabase.auth.sign_in_with_password({"email": email_norm,"password": password})
+
+				session = getattr(res, "session", None)
+				user = getattr(res, "user", None)
+				if session and user:
+					set_session(session)
+					restore_session(supabase)
+					st.success("Sucess!")
+					st.rerun()
+	else:
+		# Show current user + logout
+		restore_session(supabase)
+		u = supabase.auth.get_user()
+		if u and u.user:
+
+			user_id = u.user.id
+			res = (
+			    supabase.table("budget_profile")
+			    .select("display_name")
+			    .eq("id", user_id)
+			    .single()
+			    .execute()
+			)
+			display_name = res.data.get("display_name") if res.data else None
+			st.session_state["Display name"] = display_name
+
+			st.divider()
+			st.write(f"Signed in as: **{u.user.email}**")
+			st.write("Current display name:", display_name)
+
+			if st.button("Logout", width='stretch'):
+				try:
+					supabase.auth.sign_out()
+				except Exception:
+					pass
+				clear_session()
+				st.session_state.pop("Display name", None)
+				st.rerun()
+
+			with st.form("display_name_form"):
+			    new_name = st.text_input("New Display Name", value=display_name or "")
+			    submitted = st.form_submit_button("Change display name")
+
+			if submitted:
+				supabase.table("budget_profile").update({"display_name": new_name}).eq("id", user_id).execute()
+				st.session_state["Display name"] = new_name
+				render_header()
+				st.success("New display name saved.")
+				st.rerun()
+
+			res_data = (
+			    supabase.table("budget_profile")
+			    .select("data")
+			    .eq("id", user_id)
+			    .single()
+			    .execute()
+			)
+
+			saved_data = res_data.data.get("data") if res_data.data else None
+
+			if saved_data is not None and st.session_state.get("profile_not_loaded") is None:
+				st.session_state["profile_not_loaded"] = False	
+				for key, value in saved_data.items():
+					st.session_state[key] = value
+				st.success("Saved Profile Data Loaded")
+
 # -----------------------
 # Streamlit UI
 # -----------------------
-tab2,tab3 = st.tabs(["Dashboard", "Expense Tracker"])
+tab1,tab2,tab3 = st.tabs(["Set up Budget","Dashboard", "Expense Tracker"])
 
-#with tab1:
-	#with st.sidebar:
-#	st.title("About page")
+with tab1:
+	st.title("Setup Page")
+
+	st.header("Income")
+	annual_salary = st.number_input("Pretax Annual salary", min_value=0.0, step=1000.0, key="annual_salary")
+	pretax_401k_annual = st.number_input("401k annual contribution", min_value=0.0, step=500.0,key="pretax_401k_annual")
+	match_rate = st.number_input("Employer match rate (decimal)", min_value=0.0, max_value=1.0, step=0.01,key="match_rate")
+	hsa_monthly_in = st.number_input("HSA monthly contribution", min_value=0.0,key="hsa_monthly_in")
+	healthcare_monthly_premium = st.number_input("Healthcare monthly premium", min_value=0.0, step=50.0,key="healthcare_monthly_premium")
+	other_income = st.number_input("Other monthly income",min_value=0.0,step=100.0,key="other_income")
+
+	st.divider()
+	st.checkbox("Include 2nd income", key="use_second_income")
+
+	if st.session_state["use_second_income"]:
+		st.subheader("Income (Person 2)")
+		annual_salary_2 = st.number_input("Pretax Annual salary (2)", min_value=0.0, step=1000.0, key="annual_salary_2")
+		pretax_401k_annual_2 = st.number_input("401k annual contribution (2)", min_value=0.0, step=500.0,key="pretax_401k_annual_2")
+		match_rate_2 = st.number_input("Employer match rate (2) (decimal)", min_value=0.0, max_value=1.0, step=0.01,key="match_rate_2")
+		hsa_monthly_in_2 = st.number_input("HSA monthly contribution (2)", min_value=0.0,key="hsa_monthly_in_2")
+		healthcare_monthly_premium_2 = st.number_input("Healthcare monthly (2) premium", min_value=0.0, step=50.0,key="healthcare_monthly_premium_2")
+		other_income_2 = st.number_input("Other monthly income (2)",min_value=0.0,step=100.0,key="other_income_2")
+
+	st.divider()
+	st.header("Fixed Costs (monthly)")
+	rent_in = st.number_input("Rent", min_value=0.0, step=50.0,key="rent_in")
+	utilities_in = st.number_input("Utilities", min_value=0.0, step=25.0,key="utilities_in")
+	insurance_in = st.number_input("Insurance", min_value=0.0, step=25.0,key="insurance_in")
+	trans_travel_in = st.number_input("Transportation/Travel", min_value=0.0, step=25.0,key="trans_travel_in")
+	food_in = st.number_input("Food/Groceries", min_value=0.0, step=25.0,key="food_in")
+	debt_in = st.number_input("Debt", min_value=0.0, step=10.0,key="debt_in")
+	clothes_in = st.number_input("Clothes", min_value=0.0, step=25.0,key="clothes_in")
+	phone_in = st.number_input("Phone", min_value=0.0, step=10.0,key="phone_in")
+	subs_in = st.number_input("Subscriptions", min_value=0.0, step=25.0,key="subs_in")
+
+	st.divider()
+	st.header("Post-tax Investments (monthly)")
+	roth_in = st.number_input("Roth (monthly)", min_value=0.0, step=50.0,key="roth_in")
+	stocks_in = st.number_input("Stocks (monthly)", min_value=0.0, step=50.0,key="stocks_in")
+	post_other_in = st.number_input("Other post-tax (monthly)", min_value=0.0, step=25.0,key="post_other_in")
+
+	st.divider()
+	st.header("Savings (monthly, 0% return)")
+	emergency_in = st.number_input("Emergency fund", min_value=0.0, step=50.0,key="emergency_in")
+	vacations_in = st.number_input("Vacations", min_value=0.0, step=50.0,key="vacations_in")
+	gifts_in = st.number_input("Gifts", min_value=0.0, step=25.0,key="gifts_in")
+	save_other_in = st.number_input("Other savings", min_value=0.0, step=25.0,key="save_other_in")
+
+	st.divider()
+	st.header("Net Worth")
+	current_cash = st.number_input("Current cash", min_value=0.0, step=1000.0,key="current_cash")
+	current_investments = st.number_input("Current investments", min_value=0.0, step=5000.0,key="current_investments")
 
 with tab2:
 	st.title("Monthly Budget Dashboard")
@@ -187,61 +274,6 @@ with tab2:
 				out = save_profile_data(supabase, user_id, profile_payload)
 				st.sidebar.success("Saved your profile!")
 
-	with st.sidebar:
-		st.header("Income")
-		annual_salary = st.number_input("Pretax Annual salary", min_value=0.0, step=1000.0, key="annual_salary")
-		pretax_401k_annual = st.number_input("401k annual contribution", min_value=0.0, step=500.0,key="pretax_401k_annual")
-		match_rate = st.number_input("Employer match rate (decimal)", min_value=0.0, max_value=1.0, step=0.01,key="match_rate")
-		hsa_monthly_in = st.number_input("HSA monthly contribution", min_value=0.0,key="hsa_monthly_in")
-		healthcare_monthly_premium = st.number_input("Healthcare monthly premium", min_value=0.0, step=50.0,key="healthcare_monthly_premium")
-		other_income = st.number_input("Other monthly income",min_value=0.0,step=100.0,key="other_income")
-
-		st.divider()
-		st.checkbox("Include 2nd income", key="use_second_income")
-
-		if st.session_state["use_second_income"]:
-			st.subheader("Income (Person 2)")
-			annual_salary_2 = st.number_input("Pretax Annual salary (2)", min_value=0.0, step=1000.0, key="annual_salary_2")
-			pretax_401k_annual_2 = st.number_input("401k annual contribution (2)", min_value=0.0, step=500.0,key="pretax_401k_annual_2")
-			match_rate_2 = st.number_input("Employer match rate (2) (decimal)", min_value=0.0, max_value=1.0, step=0.01,key="match_rate_2")
-			hsa_monthly_in_2 = st.number_input("HSA monthly contribution (2)", min_value=0.0,key="hsa_monthly_in_2")
-			healthcare_monthly_premium_2 = st.number_input("Healthcare monthly (2) premium", min_value=0.0, step=50.0,key="healthcare_monthly_premium_2")
-			other_income = st.number_input("Other monthly income (2)",min_value=0.0,step=100.0,key="other_income_2")
-
-		st.divider()
-		st.header("Fixed Costs (monthly)")
-		rent_in = st.number_input("Rent", min_value=0.0, step=50.0,key="rent_in")
-		utilities_in = st.number_input("Utilities", min_value=0.0, step=25.0,key="utilities_in")
-		insurance_in = st.number_input("Insurance", min_value=0.0, step=25.0,key="insurance_in")
-		trans_travel_in = st.number_input("Transportation/Travel", min_value=0.0, step=25.0,key="trans_travel_in")
-		food_in = st.number_input("Food/Groceries", min_value=0.0, step=25.0,key="food_in")
-		debt_in = st.number_input("Debt", min_value=0.0, step=10.0,key="debt_in")
-		clothes_in = st.number_input("Clothes", min_value=0.0, step=25.0,key="clothes_in")
-		phone_in = st.number_input("Phone", min_value=0.0, step=10.0,key="phone_in")
-		subs_in = st.number_input("Subscriptions", min_value=0.0, step=25.0,key="subs_in")
-
-		st.divider()
-		st.header("Post-tax Investments (monthly)")
-		roth_in = st.number_input("Roth (monthly)", min_value=0.0, step=50.0,key="roth_in")
-		stocks_in = st.number_input("Stocks (monthly)", min_value=0.0, step=50.0,key="stocks_in")
-		post_other_in = st.number_input("Other post-tax (monthly)", min_value=0.0, step=25.0,key="post_other_in")
-
-		st.divider()
-		st.header("Savings (monthly, 0% return)")
-		emergency_in = st.number_input("Emergency fund", min_value=0.0, step=50.0,key="emergency_in")
-		vacations_in = st.number_input("Vacations", min_value=0.0, step=50.0,key="vacations_in")
-		gifts_in = st.number_input("Gifts", min_value=0.0, step=25.0,key="gifts_in")
-		save_other_in = st.number_input("Other savings", min_value=0.0, step=25.0,key="save_other_in")
-
-		st.divider()
-		st.header("Net Worth")
-		current_cash = st.number_input("Current cash", min_value=0.0, step=1000.0,key="current_cash")
-		current_investments = st.number_input("Current investments", min_value=0.0, step=5000.0,key="current_investments")
-
-		st.divider()
-		st.header("Projection")
-		projection_years = st.slider("Years", min_value=1, max_value=60, value=25, step=1)
-
 	# Compute Noah income + pre-tax items
 	noahs_income, pretax_401k_monthly, hsa_monthly = income_c(
 		annual_salary,
@@ -295,19 +327,9 @@ with tab2:
 	monthly_savings = float(save)
 	annual_contrib_total = (monthly_invest + monthly_savings) * 12
 
-	returns = (0.05, 0.07, 0.09)
-	t_years, contrib_invest, savings_series, fv_map = projection_series_with_savings(
-		pv=current_net_worth,
-		monthly_invest=monthly_invest,
-		monthly_savings=monthly_savings,
-		years=projection_years,
-		annual_returns=returns
-	)
-
 	# Charts
 	pie_fig = make_pie_fig(monthly_income, fixed, post_tax, save, guilt_free, monthly_401k, monthly_hsa)
-	proj_fig = make_projection_fig(t_years, contrib_invest, savings_series, fv_map)
-
+	
 	# Text report
 	budget_text = make_budget_text(
 		income=monthly_income,
@@ -337,6 +359,18 @@ with tab2:
 
 	st.subheader("Charts")
 	st.pyplot(pie_fig, clear_figure=True)
+
+
+	projection_years = st.slider("Projection Years", min_value=1, max_value=40, value=10, step=1)
+	returns = (0.05, 0.07, 0.09)
+	t_years, contrib_invest, savings_series, fv_map = projection_series_with_savings(
+		pv=current_net_worth,
+		monthly_invest=monthly_invest,
+		monthly_savings=monthly_savings,
+		years=projection_years,
+		annual_returns=returns
+	)
+	proj_fig = make_projection_fig(t_years, contrib_invest, savings_series, fv_map)
 	st.pyplot(proj_fig, clear_figure=True)
 
 	# Download buttons
@@ -451,7 +485,7 @@ with tab3:
 		df["expense_date"] = pd.to_datetime(df["expense_date"]).dt.date
 		df.drop(columns=['id','created_at', 'expense_id'],inplace=True)
 		df.columns = ['Expense Date', 'Category', 'Amount', 'Note']
-		pd.to_numeric(df["Amount"], errors="coerce").fillna(0.0)
+		df["Amount"] = pd.to_numeric(df["Amount"], errors="coerce").fillna(0.0)
 		st.dataframe(df, width='stretch')
 
 		st.subheader("Delete an expense")
@@ -509,6 +543,9 @@ with tab3:
 		#st.metric("Total in range", f"${df['Amount'].sum():,.2f}")
 
 # Cleanup matplotlib objects
-plt.close(pie_fig)
-plt.close(proj_fig)
-#plt.close(fig_s)
+if pie_fig is not None:
+    plt.close(pie_fig)
+if proj_fig is not None:
+    plt.close(proj_fig)
+if fig_s is not None:
+    plt.close(fig_s)
