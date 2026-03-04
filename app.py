@@ -2,6 +2,7 @@ from datetime import datetime,date
 import matplotlib.dates as mdates
 
 import streamlit as st
+import streamlit.components.v1 as components
 from supabase import create_client, Client
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mtick
@@ -338,18 +339,18 @@ with tab2:
 	pie_fig = make_pie_fig(monthly_income, fixed, post_tax, save, guilt_free, monthly_401k, monthly_hsa)
 	
 	# Text report
-	budget_text = make_budget_text(
-		income=monthly_income,
-		fixed_block=fixed_block,
-		post_block=post_block,
-		savings_block=savings_block,
-		fixed=fixed,
-		post_tax=post_tax,
-		save=save,
-		guilt_free=guilt_free,
-		pretax_401k=monthly_401k,
-		pretax_hsa=monthly_hsa
-	)
+	# budget_text = make_budget_text(
+	# 	income=monthly_income,
+	# 	fixed_block=fixed_block,
+	# 	post_block=post_block,
+	# 	savings_block=savings_block,
+	# 	fixed=fixed,
+	# 	post_tax=post_tax,
+	# 	save=save,
+	# 	guilt_free=guilt_free,
+	# 	pretax_401k=monthly_401k,
+	# 	pretax_hsa=monthly_hsa
+	# )
 
 	timestamp = datetime.now().strftime("%B %d, %Y at %I:%M %p")
 
@@ -361,8 +362,22 @@ with tab2:
 	col4.metric("Weekly Guild Free Spending", f"${guilt_free / 4:,.2f}/wk")
 
 	st.subheader("Budget Report")
+	# Build the nicer HTML report (use your dynamic header)
+	report_html = make_budget_html(
+	    timestamp=timestamp,
+	    income=monthly_income,
+	    pretax_401k=monthly_401k,
+	    pretax_hsa=monthly_hsa,
+	    fixed=fixed,
+	    post_tax=post_tax,
+	    save=save,
+	    guilt_free=guilt_free,
+	    fixed_block_text=fixed_block,
+	    post_block_text=post_block,
+	    savings_block_text=savings_block
+	)
 
-	st.code(budget_text)
+	components.html(report_html, height=1300, scrolling=True)
 
 	st.subheader("Charts")
 	st.pyplot(pie_fig, clear_figure=True)
@@ -380,43 +395,16 @@ with tab2:
 	proj_fig = make_projection_fig(t_years, contrib_invest, savings_series, fv_map)
 	st.pyplot(proj_fig, clear_figure=True)
 
-	# Download buttons
-	st.download_button(
-		"Download budget report (.txt)",
-		data=budget_text.encode("utf-8"),
-		file_name="budget_output.txt",
-		mime="text/plain"
-	)
 
-	# Optional: download the HTML dashboard too
+	# Build chart images for HTML export
 	pie_b64 = fig_to_base64_png(pie_fig)
 	proj_b64 = fig_to_base64_png(proj_fig)
 
-	html = f"""<!doctype html>
-	<html>
-	<head>
-		<meta charset="utf-8" />
-		<title>Budget Dashboard</title>
-	</head>
-	<body>
-		<h1>Monthly Budget Dashboard</h1>
-		<p>Generated: {timestamp}</p>
-
-		<h2>Charts</h2>
-		<img style="max-width:1100px;width:100%;" src="data:image/png;base64,{pie_b64}" />
-		<img style="max-width:1100px;width:100%; margin-top:16px;" src="data:image/png;base64,{proj_b64}" />
-
-		<h2>Budget Report</h2>
-		<pre>{budget_text}</pre>
-	</body>
-	</html>
-	"""
-
 	st.download_button(
-		"Download dashboard (.html)",
-		data=html.encode("utf-8"),
-		file_name="budget_dashboard.html",
-		mime="text/html"
+	    "Download dashboard (.html)",
+	    data=report_html.encode("utf-8"),
+	    file_name="budget_dashboard.html",
+	    mime="text/html"
 	)
 
 with tab3:
