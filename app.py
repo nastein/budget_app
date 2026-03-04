@@ -445,14 +445,6 @@ with tab3:
 	    st.success("Expense added.")
 	    st.rerun()
 
-	st.subheader("Your expenses")
-
-	colA, colB = st.columns(2)
-	with colA:
-	    start_date = st.date_input("From", value=date.today().replace(day=1), key="exp_from")
-	with colB:
-	    end_date = st.date_input("To", value=date.today(), key="exp_to")
-
 	start_month = date.today().replace(day=1)
 	end_today = date.today()
 
@@ -473,6 +465,8 @@ with tab3:
 	else:
 		actual_by_cat = {}
 
+	total_over_budget = 0
+
 	st.subheader("This month: Budget vs Actual")
 
 	#This is hardcoded (change this)
@@ -491,19 +485,29 @@ with tab3:
 		if budget <= 0 and actual <= 0:
 			continue
 
+		if actual > budget:
+			total_over_budget += actual - budget
+
 		breakdown = None
 		if budget_cat == "Food":
 			breakdown = (
-				f'Groceries: ${actual_by_cat.get("Groceries", 0.0):,.0f} | '
-				f'Dining: ${actual_by_cat.get("Dining", 0.0):,.0f}'
+				f'Groceries: {actual_by_cat.get("Groceries", 0.0):,.0f} | Dining: {actual_by_cat.get("Dining", 0.0):,.0f}'
 			)
 		if budget_cat == "Misc":
 			breakdown = (
-				f'Health: ${actual_by_cat.get("Health", 0.0):,.0f} | '
-				f'Entertainment: ${actual_by_cat.get("Entertainment", 0.0):,.0f}'
+				f'Health: {actual_by_cat.get("Health", 0.0):,.0f} | Entertainment: {actual_by_cat.get("Entertainment", 0.0):,.0f}'
 			)
 
 		fintech_bar(budget_cat, actual, budget, breakdown=breakdown)
+	fintech_bar("Guilt Free Spending", total_over_budget, guilt_free)
+
+	st.subheader("Your expenses")
+
+	colA, colB = st.columns(2)
+	with colA:
+	    start_date = st.date_input("From", value=date.today().replace(day=1), key="exp_from")
+	with colB:
+	    end_date = st.date_input("To", value=date.today(), key="exp_to")
 
 	# Fetch
 	restore_session(supabase)
