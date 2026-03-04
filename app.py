@@ -396,16 +396,24 @@ with tab2:
 	st.pyplot(proj_fig, clear_figure=True)
 
 
-	# Build chart images for HTML export
-	pie_b64 = fig_to_base64_png(pie_fig)
-	proj_b64 = fig_to_base64_png(proj_fig)
+	make_html = st.checkbox("Generate HTML report preview", value=False)
 
-	st.download_button(
-	    "Download dashboard (.html)",
-	    data=report_html.encode("utf-8"),
-	    file_name="budget_dashboard.html",
-	    mime="text/html"
-	)
+	if make_html:
+	    # Build chart images for HTML export
+		pie_b64 = fig_to_base64_png(pie_fig)
+		proj_b64 = fig_to_base64_png(proj_fig)
+
+		st.download_button(
+			"Download dashboard (.html)",
+			data=report_html.encode("utf-8"),
+			file_name="budget_dashboard.html",
+			mime="text/html"
+		)
+	else:
+		# no base64 work
+		pass
+
+	
 
 with tab3:
 	st.title("Expenses")
