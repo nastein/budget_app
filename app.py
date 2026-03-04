@@ -12,6 +12,7 @@ import html
 # If you still want to use your existing function:
 from income_calc import income_c
 from helpers import *
+from budget_map import *
 
 pie_fig = None
 proj_fig = None
@@ -56,6 +57,7 @@ def render_header():
         unsafe_allow_html=True
     )
 st.set_page_config(page_title="Budget Dashboard", layout="wide")
+# Global CSS for the app
 st.markdown("""
 <style>
 .fade-in {
@@ -65,6 +67,11 @@ st.markdown("""
 @keyframes fadeIn {
     from { opacity: 0; transform: translateY(10px); }
     to { opacity: 1; transform: translateY(0); }
+}
+
+/* tighten caption spacing under progress bars */
+div[data-testid="stCaptionContainer"] p {
+    margin-top: -6px;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -457,6 +464,58 @@ with tab3:
 	    start_date = st.date_input("From", value=date.today().replace(day=1), key="exp_from")
 	with colB:
 	    end_date = st.date_input("To", value=date.today(), key="exp_to")
+
+	start_month = date.today().replace(day=1)
+	end_today = date.today()
+
+	expenses_m = (
+		supabase.table("expense_profile")
+		.select("expense_date, category, amount")
+		.gte("expense_date", start_month.isoformat())
+		.lte("expense_date", end_today.isoformat())
+		.execute()
+	)
+
+	rows_m = expenses_m.data or []
+	df_m = pd.DataFrame(rows_m) if rows_m else pd.DataFrame(columns=["category","amount"])
+
+	if not df_m.empty:
+		df_m["amount"] = pd.to_numeric(df_m["amount"], errors="coerce").fillna(0.0)
+		actual_by_cat = df_m.groupby("category")["amount"].sum().to_dict()
+	else:
+		actual_by_cat = {}
+
+	st.subheader("This month: Budget vs Actual")
+
+	#This is hardcoded (change this)
+	misc_budget = 0.15 * fixed
+
+	for budget_cat, expense_cats in BUDGET_MAP.items():
+		actual = sum(float(actual_by_cat.get(c, 0.0)) for c in expense_cats)
+
+		if budget_cat == "Misc":
+			budget = float(misc_budget)
+		else:
+			budget_key = BUDGET_KEYS[budget_cat]
+			budget = float(st.session_state.get(budget_key, 0.0))
+
+	    # Skip truly empty lines
+		if budget <= 0 and actual <= 0:
+			continue
+
+		breakdown = None
+		if budget_cat == "Food":
+			breakdown = (
+				f'Groceries: ${actual_by_cat.get("Groceries", 0.0):,.0f} | '
+				f'Dining: ${actual_by_cat.get("Dining", 0.0):,.0f}'
+			)
+		if budget_cat == "Misc":
+			breakdown = (
+				f'Health: ${actual_by_cat.get("Health", 0.0):,.0f} | '
+				f'Entertainment: ${actual_by_cat.get("Entertainment", 0.0):,.0f}'
+			)
+
+		fintech_bar(budget_cat, actual, budget, breakdown=breakdown)
 
 	# Fetch
 	restore_session(supabase)
