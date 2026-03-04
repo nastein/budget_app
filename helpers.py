@@ -45,6 +45,8 @@ def fintech_bar(label, actual, budget, breakdown=None):
     pct = ratio * 100.0
     fill = min(pct, 100.0)
 
+    amount_over_budget = actual - budget
+
     # Color rules
     if budget <= 0:
         color = "#9CA3AF"  # gray
@@ -93,6 +95,7 @@ def fintech_bar(label, actual, budget, breakdown=None):
     # Optional warning callout
     if budget > 0 and actual > budget:
         st.warning(f"{label} is over budget by ${actual - budget:,.2f}", icon="⚠️")
+        st.warning(f"${actual-budget:,.0f} taken from guilt-free spending")
 
 def fixed_costs(rent=0, utilities=0, insurance=0, trans_travel=0, debt=0, food=0, clothes=0, phone=0, subs=0):
 	fixed = rent + utilities + insurance + trans_travel + debt + food + clothes + phone + subs
