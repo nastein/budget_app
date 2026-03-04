@@ -377,7 +377,7 @@ with tab2:
 	    savings_block_text=savings_block
 	)
 
-	components.html(report_html, height=1300, scrolling=True)
+	components.html(report_html, height=1150, scrolling=True)
 
 	st.subheader("Charts")
 	st.pyplot(pie_fig, clear_figure=True)
