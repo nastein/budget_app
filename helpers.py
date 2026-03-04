@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as mtick
 import base64
 import io
+import html as _html
 
 
 # -----------------------
@@ -288,6 +289,184 @@ def make_budget_text(income, fixed_block, post_block, savings_block, fixed, post
 
 	return "\n".join(lines)
 
+
+def money(x): 
+    return f"${float(x):,.0f}"
+
+def pct(x): 
+    return f"{100*float(x):.0f}%"
+
+def progress_bar(value, max_value):
+    value = float(value or 0.0)
+    max_value = float(max_value or 0.0)
+    ratio = (value / max_value) if max_value > 0 else 0.0
+    ratio_clamped = min(max(ratio, 0.0), 1.0)
+    # color thresholds
+    if max_value <= 0:
+        color = "#9CA3AF"
+    elif ratio < 0.8:
+        color = "#16A34A"
+    elif ratio < 1.0:
+        color = "#F59E0B"
+    else:
+        color = "#DC2626"
+    return f"""
+      <div class="bar">
+        <div class="barfill" style="width:{ratio_clamped*100:.1f}%; background:{color};"></div>
+      </div>
+    """
+
+def make_budget_html(
+    timestamp,
+    income,
+    pretax_401k,
+    pretax_hsa,
+    fixed,
+    post_tax,
+    save,
+    guilt_free,
+    fixed_block_text="",
+    post_block_text="",
+    savings_block_text="",
+    pie_b64=None,
+    proj_b64=None,
+):
+    fixed_pct = fixed / income if income else 0.0
+    post_pct  = post_tax / income if income else 0.0
+    save_pct  = save / income if income else 0.0
+    guilt_pct = guilt_free / income if income else 0.0
+
+    total_income = income + pretax_401k + pretax_hsa
+    weekly_guilt = guilt_free / 4.0
+
+    def card(label, value, sub=""):
+        return f"""
+        <div class="card">
+          <div class="label">{_html.escape(label)}</div>
+          <div class="value">{_html.escape(value)}</div>
+          <div class="sub">{_html.escape(sub)}</div>
+        </div>
+        """
+
+    # Use <pre> blocks as a safe fallback until you add structured line items
+    fixed_pre   = _html.escape(fixed_block_text or "").strip()
+    post_pre    = _html.escape(post_block_text or "").strip()
+    savings_pre = _html.escape(savings_block_text or "").strip()
+
+    return f"""<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <style>
+    :root {{
+      --bg: #F5F7FB;
+      --card: #FFFFFF;
+      --text: #111827;
+      --muted: #6B7280;
+      --border: #E5E7EB;
+    }}
+    body {{
+      margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      background: var(--bg); color: var(--text);
+    }}
+    .wrap {{ max-width: 1050px; margin: 28px auto; padding: 0 18px; }}
+    h1 {{ margin: 0 0 6px; font-size: 28px; }}
+    .meta {{ color: var(--muted); margin-bottom: 18px; }}
+    .grid {{ display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }}
+    .card {{
+      background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+      padding: 14px 14px 12px;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+    }}
+    .label {{ color: var(--muted); font-size: 12px; letter-spacing: 0.02em; text-transform: uppercase; }}
+    .value {{ font-size: 22px; font-weight: 700; margin-top: 6px; }}
+    .sub {{ color: var(--muted); font-size: 12px; margin-top: 6px; }}
+    .section {{ margin-top: 16px; }}
+    .panel {{
+      background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+      padding: 14px; box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+    }}
+    .row {{
+      display:flex; justify-content:space-between; align-items:baseline; gap: 10px;
+      margin: 10px 0 8px;
+    }}
+    .row .name {{ font-weight: 700; }}
+    .row .nums {{ color: var(--muted); font-size: 14px; white-space: nowrap; }}
+    .bar {{ height: 10px; background: #E5E7EB; border-radius: 999px; overflow: hidden; }}
+    .barfill {{ height: 100%; border-radius: 999px; }}
+    .twocol {{ display:grid; grid-template-columns: 1fr 1fr; gap: 12px; }}
+    img {{ max-width: 100%; border-radius: 12px; border: 1px solid var(--border); background: #fff; }}
+    pre {{
+      background: #0B1020; color: #E5E7EB; padding: 12px; border-radius: 12px;
+      overflow-x: auto; font-size: 12px; line-height: 1.4;
+    }}
+    @media (max-width: 900px) {{
+      .grid {{ grid-template-columns: repeat(2, 1fr); }}
+      .twocol {{ grid-template-columns: 1fr; }}
+    }}
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <div class="meta">Generated: {_html.escape(timestamp)}</div>
+
+    <div class="grid">
+      {card("Net Income (Monthly)", money(income), "After taxes")}
+      {card("Total Income (Monthly)", money(total_income), "Including 401k + HSA")}
+      {card("Guilt-Free (Monthly)", money(guilt_free), f"Weekly: {money(weekly_guilt)}")}
+      {card("Fixed Costs (Monthly)", money(fixed), f"Share of income: {pct(fixed_pct)}")}
+    </div>
+
+    <div class="section panel">
+      <div class="row">
+        <div class="name">Fixed Costs</div>
+        <div class="nums">{money(fixed)} • {pct(fixed_pct)}</div>
+      </div>
+      {progress_bar(fixed, income)}
+      <div style="margin-top:10px;">
+        <pre>{fixed_pre}</pre>
+      </div>
+    </div>
+
+    <div class="section panel">
+      <div class="row">
+        <div class="name">Post-Tax Investments</div>
+        <div class="nums">{money(post_tax)} • {pct(post_pct)}</div>
+      </div>
+      {progress_bar(post_tax, income)}
+      <div style="margin-top:10px;">
+        <pre>{post_pre}</pre>
+      </div>
+    </div>
+
+    <div class="section panel">
+      <div class="row">
+        <div class="name">Savings</div>
+        <div class="nums">{money(save)} • {pct(save_pct)}</div>
+      </div>
+      {progress_bar(save, income)}
+      <div style="margin-top:10px;">
+        <pre>{savings_pre}</pre>
+      </div>
+    </div>
+
+    <div class="section panel">
+      <div class="row">
+        <div class="name">Guilt-Free Spending</div>
+        <div class="nums">{money(guilt_free)} • {pct(guilt_pct)} • Weekly {money(weekly_guilt)}</div>
+      </div>
+      {progress_bar(guilt_free, income)}
+    </div>
+
+ 
+
+  </div>
+</body>
+</html>
+"""
 
 def fig_to_png_bytes(fig):
 	buf = io.BytesIO()
