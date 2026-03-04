@@ -32,6 +32,66 @@ def print_row(label, monthly, income=None):
 		return f"{label:<35} {monthly:>12,.2f}   {yearly:>12,.2f}   {pct:>7.2f}%"
 	return f"{label:<35} {monthly:>12,.2f}   {yearly:>12,.2f}"
 
+def fintech_bar(label, actual, budget, breakdown=None):
+    """
+    Renders a fintech-style progress bar with color thresholds and overspend info.
+    """
+    # Guard
+    actual = float(actual or 0.0)
+    budget = float(budget or 0.0)
+
+    ratio = (actual / budget) if budget > 0 else 0.0
+    pct = ratio * 100.0
+    fill = min(pct, 100.0)
+
+    # Color rules
+    if budget <= 0:
+        color = "#9CA3AF"  # gray
+    elif pct < 80:
+        color = "#16A34A"  # green
+    elif pct < 100:
+        color = "#F59E0B"  # amber
+    else:
+        color = "#DC2626"  # red
+
+    # Text: remaining vs over
+    if budget > 0:
+        delta = budget - actual
+        status = f"Remaining: ${delta:,.0f}" if delta >= 0 else f"Over by: ${abs(delta):,.0f}"
+        pct_text = f"{pct:,.0f}%"
+    else:
+        status = "No budget set"
+        pct_text = "—"
+
+    st.markdown(
+        f"""
+        <div style="margin: 10px 0 6px 0;">
+          <div style="display:flex; justify-content:space-between; align-items:baseline;">
+            <div style="font-weight:700; font-size: 1.0rem;">{label}</div>
+            <div style="font-size:0.9rem; color:#6B7280;">{pct_text}</div>
+          </div>
+
+          <div style="display:flex; justify-content:space-between; margin-top:2px;">
+            <div style="font-size:0.95rem;">${actual:,.0f} / ${budget:,.0f}</div>
+            <div style="font-size:0.95rem; color:{'#DC2626' if (budget>0 and actual>budget) else '#16A34A' if (budget>0 and actual<=budget) else '#6B7280'};">
+              {status}
+            </div>
+          </div>
+
+          <div style="height: 10px; background: #E5E7EB; border-radius: 999px; overflow:hidden; margin-top: 6px;">
+            <div style="width:{fill:.1f}%; height:100%; background:{color}; border-radius: 999px;"></div>
+          </div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+    if breakdown:
+        st.caption(breakdown)
+
+    # Optional warning callout
+    if budget > 0 and actual > budget:
+        st.warning(f"{label} is over budget by ${actual - budget:,.2f}", icon="⚠️")
 
 def fixed_costs(rent=0, utilities=0, insurance=0, trans_travel=0, debt=0, food=0, clothes=0, phone=0, subs=0):
 	fixed = rent + utilities + insurance + trans_travel + debt + food + clothes + phone + subs
