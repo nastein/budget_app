@@ -1,9 +1,9 @@
 BUDGET_MAP = {
     "Food": ["Groceries", "Dining"],   # combined
-    "Transportation": ["Transportation"],
+    "Transportation": ["Transportation", "Travel"],
     "Clothes": ["Clothes"],
     "Gifts": ["Gifts"],
-    "Misc": ["Health", "Entertainment"]
+    "Misc": ["Health", "Entertainment", "Other"]
 }
 
 BUDGET_KEYS = {
