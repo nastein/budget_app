@@ -530,3 +530,88 @@ def save_profile_data(supabase, user_id: str, data: dict):
         .eq("id", user_id)
         .execute()
     )
+
+# helpers.py
+import streamlit as st
+import pandas as pd
+from datetime import date
+
+# --- Cache the Supabase client (resource cache) ---
+@st.cache_resource
+def get_supabase_client():
+    url = st.secrets["SUPABASE_URL"]
+    key = st.secrets["SUPABASE_KEY"]
+    return create_client(url, key)
+
+def init_connection():
+    # keep your app.py call sites unchanged
+    return get_supabase_client()
+
+
+# --- Cached READS (data cache) ---
+@st.cache_data(ttl=60)
+def fetch_budget_profile(user_id: str) -> dict:
+    sb = get_supabase_client()
+    restore_session(sb)
+    res = (
+        sb.table("budget_profile")
+        .select("data, display_name")
+        .eq("id", user_id)
+        .single()
+        .execute()
+    )
+    return res.data or {}
+
+@st.cache_data(ttl=30)
+def fetch_expenses_month(user_id: str, start_iso: str, end_iso: str) -> pd.DataFrame:
+    sb = get_supabase_client()
+    restore_session(sb)
+    res = (
+        sb.table("expense_profile")
+        .select("expense_date, category, amount")
+        .eq("id", user_id)
+        .gte("expense_date", start_iso)
+        .lte("expense_date", end_iso)
+        .execute()
+    )
+    rows = res.data or []
+    df = pd.DataFrame(rows) if rows else pd.DataFrame(columns=["expense_date", "category", "amount"])
+    if not df.empty:
+        df["amount"] = pd.to_numeric(df["amount"], errors="coerce").fillna(0.0)
+    return df
+
+@st.cache_data(ttl=30)
+def fetch_expenses_range(user_id: str, start_iso: str, end_iso: str) -> list:
+    sb = get_supabase_client()
+    restore_session(sb)
+    res = (
+        sb.table("expense_profile")
+        .select("id, expense_id, expense_date, category, amount, created_at, Notes")
+        .eq("id", user_id)
+        .gte("expense_date", start_iso)
+        .lte("expense_date", end_iso)
+        .order("expense_date", desc=True)
+        .execute()
+    )
+    return res.data or []
+
+@st.cache_data(ttl=120)
+def fetch_monthly_expense_totals() -> pd.DataFrame:
+    sb = get_supabase_client()
+    restore_session(sb)
+    monthly = sb.rpc("monthly_expense_totals", {"start_date": None, "end_date": None}).execute()
+    dfm = pd.DataFrame(monthly.data)
+    if not dfm.empty:
+        dfm["month"] = pd.to_datetime(dfm["month"])
+        dfm["total"] = dfm["total"].astype(float)
+    return dfm
+
+
+# --- Cache invalidation helpers (call after writes) ---
+def clear_profile_cache():
+    fetch_budget_profile.clear()
+
+def clear_expense_cache():
+    fetch_expenses_month.clear()
+    fetch_expenses_range.clear()
+    fetch_monthly_expense_totals.clear()

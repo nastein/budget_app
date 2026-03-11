@@ -30,19 +30,9 @@ display_name = None
 saved_data = None
 
 if user_id:
-    res_data = (
-        supabase.table("budget_profile")
-        .select("data, display_name")   # <-- IMPORTANT
-        .eq("id", user_id)
-        .single()
-        .execute()
-    )
-
-    if res_data.data:
-        saved_data = res_data.data.get("data")
-        display_name = res_data.data.get("display_name")
-
-    # Sync session_state WITHOUT rerun
+    prof = fetch_budget_profile(user_id)   # <-- cached
+    saved_data = prof.get("data")
+    display_name = prof.get("display_name")
     st.session_state["Display name"] = display_name
 else:
     st.session_state.pop("Display name", None)
@@ -117,15 +107,15 @@ with st.sidebar:
 		if u and u.user:
 
 			user_id = u.user.id
-			res = (
-			    supabase.table("budget_profile")
-			    .select("display_name")
-			    .eq("id", user_id)
-			    .single()
-			    .execute()
-			)
-			display_name = res.data.get("display_name") if res.data else None
-			st.session_state["Display name"] = display_name
+			# res = (
+			#     supabase.table("budget_profile")
+			#     .select("display_name")
+			#     .eq("id", user_id)
+			#     .single()
+			#     .execute()
+			# )
+			# display_name = res.data.get("display_name") if res.data else None
+			# st.session_state["Display name"] = display_name
 
 			st.divider()
 			st.write(f"Signed in as: **{u.user.email}**")
@@ -138,6 +128,8 @@ with st.sidebar:
 					pass
 				clear_session()
 				st.session_state.pop("Display name", None)
+				clear_profile_cache()    # NEW
+				clear_expense_cache()    # NEW (optional)
 				st.rerun()
 
 			with st.form("display_name_form"):
@@ -146,8 +138,8 @@ with st.sidebar:
 
 			if submitted:
 				supabase.table("budget_profile").update({"display_name": new_name}).eq("id", user_id).execute()
+				clear_profile_cache()               # <-- NEW
 				st.session_state["Display name"] = new_name
-				render_header()
 				st.success("New display name saved.")
 				st.rerun()
 
@@ -438,28 +430,19 @@ with tab3:
 	    }
 
 	    supabase.table("expense_profile").insert(expense_payload).execute()
+	    clear_expense_cache()   # NEW
 	    st.success("Expense added.")
 	    st.rerun()
 
 	start_month = date.today().replace(day=1)
 	end_today = date.today()
 
-	expenses_m = (
-		supabase.table("expense_profile")
-		.select("expense_date, category, amount")
-		.gte("expense_date", start_month.isoformat())
-		.lte("expense_date", end_today.isoformat())
-		.execute()
-	)
-
-	rows_m = expenses_m.data or []
-	df_m = pd.DataFrame(rows_m) if rows_m else pd.DataFrame(columns=["category","amount"])
+	df_m = fetch_expenses_month(user_id, start_month.isoformat(), end_today.isoformat())  # cached
 
 	if not df_m.empty:
-		df_m["amount"] = pd.to_numeric(df_m["amount"], errors="coerce").fillna(0.0)
-		actual_by_cat = df_m.groupby("category")["amount"].sum().to_dict()
+	    actual_by_cat = df_m.groupby("category")["amount"].sum().to_dict()
 	else:
-		actual_by_cat = {}
+	    actual_by_cat = {}
 
 	total_over_budget = 0
 
@@ -507,23 +490,15 @@ with tab3:
 
 	# Fetch
 	restore_session(supabase)
-	expenses = (
-	    supabase.table("expense_profile")
-	    .select("id, expense_id, expense_date, category, amount, created_at, Notes")
-	    .gte("expense_date", start_date.isoformat())
-	    .lte("expense_date", end_date.isoformat())
-	    .order("expense_date", desc=True)
-	    .execute()
-	)
+	
 
 	#Get total spending on per month basis
-	monthly = supabase.rpc("monthly_expense_totals", {"start_date": None, "end_date": None}).execute()
-	dfm = pd.DataFrame(monthly.data)
+	dfm = fetch_monthly_expense_totals()  # cached
 	if not dfm.empty:
 		dfm["month"] = pd.to_datetime(dfm["month"])
 		dfm["total"] = dfm["total"].astype(float)
 
-	rows = expenses.data or []
+	rows = fetch_expenses_range(user_id, start_date.isoformat(), end_date.isoformat())  # cached
 	if not rows:
 	    st.write("No expenses in this range.")
 	else:
@@ -556,6 +531,7 @@ with tab3:
 		if st.button("Delete selected expense", disabled = not confirm):
 			restore_session(supabase)
 			supabase.table("expense_profile").delete().eq("expense_id", delete_expense_id).execute()
+			clear_expense_cache()   # NEW
 			st.success("Deleted.")
 			st.rerun()
 
