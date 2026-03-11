@@ -336,22 +336,9 @@ with tab2:
 	annual_contrib_total = (monthly_invest + monthly_savings) * 12
 
 	# Charts
-	pie_fig = make_pie_fig(monthly_income, fixed, post_tax, save, guilt_free, monthly_401k, monthly_hsa)
+	if monthly_income != 0:
+		pie_fig = make_pie_fig(monthly_income, fixed, post_tax, save, guilt_free, monthly_401k, monthly_hsa)
 	
-	# Text report
-	# budget_text = make_budget_text(
-	# 	income=monthly_income,
-	# 	fixed_block=fixed_block,
-	# 	post_block=post_block,
-	# 	savings_block=savings_block,
-	# 	fixed=fixed,
-	# 	post_tax=post_tax,
-	# 	save=save,
-	# 	guilt_free=guilt_free,
-	# 	pretax_401k=monthly_401k,
-	# 	pretax_hsa=monthly_hsa
-	# )
-
 	timestamp = datetime.now().strftime("%B %d, %Y at %I:%M %p")
 
 	# Layout
@@ -380,7 +367,8 @@ with tab2:
 	components.html(report_html, height=1150, scrolling=True)
 
 	st.subheader("Charts")
-	st.pyplot(pie_fig, clear_figure=True)
+	if monthly_income != 0:
+		st.pyplot(pie_fig, clear_figure=True)
 
 
 	projection_years = st.slider("Projection Years", min_value=1, max_value=40, value=10, step=1)

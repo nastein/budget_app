@@ -34,6 +34,9 @@ def calculate_tax(taxable_income, brackets):
 def income_c(gross_income, cont401k_personal=0, match401k_rate=0, 
            HSA_cont_monthly=0, healthcare_cost_permonth=0, debug=False):
 
+	if gross_income == 0:
+		return 0,0,0
+
 	cont401k_rate = cont401k_personal / gross_income
 	cont401k_total = gross_income * (cont401k_rate + match401k_rate)
 
