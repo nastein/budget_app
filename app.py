@@ -461,8 +461,8 @@ with tab3:
 			budget = float(st.session_state.get(budget_key, 0.0))
 
 	    # Skip truly empty lines
-		if budget <= 0 and actual <= 0:
-			continue
+		#if budget <= 0 and actual <= 0:
+		#	continue
 
 		if actual > budget:
 			total_over_budget += actual - budget
@@ -474,7 +474,7 @@ with tab3:
 			)
 		if budget_cat == "Misc":
 			breakdown = (
-				f'Health: {actual_by_cat.get("Health", 0.0):,.0f} | Entertainment: {actual_by_cat.get("Entertainment", 0.0):,.0f}'
+				f'Health: {actual_by_cat.get("Health", 0.0):,.0f} | Entertainment: {actual_by_cat.get("Entertainment", 0.0):,.0f}  | Other: {actual_by_cat.get("Other", 0.0):,.0f}'
 			)
 
 		fintech_bar(budget_cat, actual, budget, breakdown=breakdown)

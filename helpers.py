@@ -93,8 +93,9 @@ def fintech_bar(label, actual, budget, breakdown=None):
         st.caption(breakdown)
 
     # Optional warning callout
-    if budget > 0 and actual > budget:
-        st.warning(f"{label} is over budget by ${actual - budget:,.2f}", icon="⚠️")
+    if actual > budget:
+        if budget > 0:
+            st.warning(f"{label} is over budget by ${actual - budget:,.2f}", icon="⚠️")
         st.warning(f"${actual-budget:,.0f} taken from guilt-free spending")
 
 def fixed_costs(rent=0, utilities=0, insurance=0, trans_travel=0, debt=0, food=0, clothes=0, phone=0, subs=0):
