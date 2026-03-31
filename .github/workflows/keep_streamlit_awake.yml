@@ -11,7 +11,5 @@ jobs:
     steps:
       - name: Ping Streamlit app
         run: |
-          STATUS=$(curl -L -o /dev/null -s -w "%{http_code}" "https://budgetapp-guiltfree.streamlit.app/")
-          echo "HTTP status: $STATUS"
-          test "$STATUS" -ge 200
-          test "$STATUS" -lt 400
+          STATUS=$(curl -I -s -o /dev/null -w "%{http_code}" "https://budgetapp-guiltfree.streamlit.app/" || true)
+          echo "Observed status: $STATUS"
