@@ -5,6 +5,8 @@ import matplotlib.ticker as mtick
 import base64
 import io
 import html as _html
+import pandas as pd
+from datetime import date
 
 
 # -----------------------
@@ -531,11 +533,6 @@ def save_profile_data(supabase, user_id: str, data: dict):
         .eq("id", user_id)
         .execute()
     )
-
-# helpers.py
-import streamlit as st
-import pandas as pd
-from datetime import date
 
 # --- Cache the Supabase client (resource cache) ---
 @st.cache_resource
