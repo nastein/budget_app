@@ -475,7 +475,7 @@ with tab3:
 
 		fintech_bar(budget_cat, actual, budget, breakdown=breakdown)
 	fintech_bar("Guilt Free Spending", total_over_budget, guilt_free)
-	fintech_bar("Total Budget", total_spent, total_budget)
+	fintech_bar("Total Budget", total_spent, total_budget + guilt_free)
 
 	st.subheader("Your expenses")
 
