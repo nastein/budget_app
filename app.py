@@ -10,7 +10,6 @@ import pandas as pd
 import numpy as np
 import html
 
-# If you still want to use your existing function:
 from income_calc import income_c
 from helpers import *
 from budget_map import *
@@ -448,17 +447,11 @@ with tab3:
 
 	st.subheader("This month: Budget vs Actual")
 
-	#This is hardcoded (change this)
-	misc_budget = 0.15 * fixed
-
 	for budget_cat, expense_cats in BUDGET_MAP.items():
 		actual = sum(float(actual_by_cat.get(c, 0.0)) for c in expense_cats)
-
-		if budget_cat == "Misc":
-			budget = float(misc_budget)
-		else:
-			budget_key = BUDGET_KEYS[budget_cat]
-			budget = float(st.session_state.get(budget_key, 0.0))
+		
+		budget_key = BUDGET_KEYS[budget_cat]
+		budget = float(st.session_state.get(budget_key, 0.0))
 
 	    # Skip truly empty lines
 		#if budget <= 0 and actual <= 0:
@@ -471,10 +464,6 @@ with tab3:
 		if budget_cat == "Food":
 			breakdown = (
 				f'Groceries: {actual_by_cat.get("Groceries", 0.0):,.0f} | Dining: {actual_by_cat.get("Dining", 0.0):,.0f}'
-			)
-		if budget_cat == "Misc":
-			breakdown = (
-				f'Health: {actual_by_cat.get("Health", 0.0):,.0f} | Entertainment: {actual_by_cat.get("Entertainment", 0.0):,.0f}  | Other: {actual_by_cat.get("Other", 0.0):,.0f}'
 			)
 
 		fintech_bar(budget_cat, actual, budget, breakdown=breakdown)

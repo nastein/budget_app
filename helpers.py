@@ -10,7 +10,7 @@ from datetime import date
 
 
 # -----------------------
-# Helpers (same as your script)
+# Helpers 
 # -----------------------
 def autopct_dollars(values):
     total = sum(values)
@@ -102,8 +102,7 @@ def fintech_bar(label, actual, budget, breakdown=None):
 
 def fixed_costs(rent=0, utilities=0, insurance=0, trans_travel=0, debt=0, food=0, clothes=0, phone=0, subs=0):
 	fixed = rent + utilities + insurance + trans_travel + debt + food + clothes + phone + subs
-	misc = 0.15 * fixed
-	total = fixed + misc
+	total = fixed
 
 	lines = []
 	lines.append("\nFIXED COSTS")
@@ -120,7 +119,6 @@ def fixed_costs(rent=0, utilities=0, insurance=0, trans_travel=0, debt=0, food=0
 	lines.append(print_row("Clothes", clothes))
 	lines.append(print_row("Phone", phone))
 	lines.append(print_row("Subscriptions", subs))
-	lines.append(print_row("Misc (15%)", misc))
 
 	return total, "\n".join(lines)
 
