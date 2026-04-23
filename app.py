@@ -445,6 +445,9 @@ with tab3:
 
 	total_over_budget = 0
 
+	total_budget = 0
+	total_spent = 0
+
 	st.subheader("This month: Budget vs Actual")
 
 	for budget_cat, expense_cats in BUDGET_MAP.items():
@@ -457,8 +460,12 @@ with tab3:
 		#if budget <= 0 and actual <= 0:
 		#	continue
 
+		total_budget += budget
+
 		if actual > budget:
 			total_over_budget += actual - budget
+
+		total_spent += actual
 
 		breakdown = None
 		if budget_cat == "Food":
@@ -468,6 +475,7 @@ with tab3:
 
 		fintech_bar(budget_cat, actual, budget, breakdown=breakdown)
 	fintech_bar("Guilt Free Spending", total_over_budget, guilt_free)
+	fintech_bar("Total Budget", total_spent, total_budget)
 
 	st.subheader("Your expenses")
 
